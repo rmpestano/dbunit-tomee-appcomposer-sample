@@ -1,0 +1,6 @@
+= DBUnit / ApplicationComposer Sample
+
+This sample shows how to mix `ApplicationComposer` and `Arquillian` Persistence extension
+to test efficiently and quickly your persistence layer.
+
+NOTE: it also works for other kind applications like JAX-RS  ones :)
