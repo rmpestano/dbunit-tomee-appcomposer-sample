@@ -1,15 +1,12 @@
 package com.github.rmannibucau.sample;
 
-import com.github.rmannibucau.rules.api.dbunit.ArquillianPersistenceDbUnitRule;
+import com.github.dbunit.rules.DBUnitRule;
+import com.github.dbunit.rules.api.dataset.DataSet;
 import com.github.rmannibucau.rules.api.dbunit.DbUnitInstance;
 import org.apache.openejb.junit.ApplicationComposerRule;
-import org.apache.openejb.testing.Classes;
-import org.apache.openejb.testing.ContainerProperties;
-import org.apache.openejb.testing.Default;
-import org.apache.openejb.testing.Descriptor;
-import org.apache.openejb.testing.Descriptors;
+import org.apache.openejb.testing.*;
 import org.jboss.arquillian.persistence.Cleanup;
-import org.jboss.arquillian.persistence.UsingDataSet;
+import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
@@ -17,7 +14,10 @@ import org.junit.rules.TestRule;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.sql.DataSource;
+import java.sql.SQLException;
 
 import static org.jboss.arquillian.persistence.TestExecutionPhase.AFTER;
 import static org.junit.Assert.assertEquals;
@@ -32,22 +32,31 @@ import static org.junit.runners.MethodSorters.NAME_ASCENDING;
         @ContainerProperties.Property(name = "jdbc/user", value = "new://Resource?type=DataSource"),
         @ContainerProperties.Property(name = "jdbc/user.LogSql", value = "true")
 })
-@Cleanup(phase = AFTER)
-@FixMethodOrder(NAME_ASCENDING) // show that find2 got the cleanup in between, useless out of that "demo" context
+@DataSet(cleanBefore = true)
 public class UserRepositoryTest {
-    @Rule
-    public final TestRule rules = outerRule(new ApplicationComposerRule(this))
-            .around(new ArquillianPersistenceDbUnitRule().resourcesHolder(this));
 
     @Resource
     @DbUnitInstance
     private DataSource dataSource;
 
+    @Rule
+    public final TestRule rules = outerRule(new ApplicationComposerRule(this))
+            .around(DBUnitRule.instance(() -> {
+                try {
+                    return dataSource.getConnection();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }));
+
+
     @Inject
     private UserRepository repository;
 
+
     @Test
-    @UsingDataSet("datasets/users.yml")
+    @DataSet("datasets/users.yml")
     public void find1() {
         assertEquals("John Smith", repository.find(1L).getName());
         assertEquals("Clark Kent", repository.find(2L).getName());
